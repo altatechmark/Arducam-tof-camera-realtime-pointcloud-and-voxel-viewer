@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Three.js Point Cloud</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/examples/jsm/controls/OrbitControls.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  </head>
+  <body>
+    <script>
+      //json file point cloud
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(
+        75,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        1000
+      );
+
+      const renderer = new THREE.WebGLRenderer();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
+
+      async function loadPointCloudFromJSON(url) {
+        const response = await fetch(url);
+        const data = await response.json();
+        const numPoints = data.points.length;
+
+        const positions = new Float32Array(numPoints * 3);
+
+        for (let i = 0; i < numPoints; i++) {
+          const point = data.points[i];
+          positions[i * 3] = point.x;
+          positions[i * 3 + 1] = point.y;
+          positions[i * 3 + 2] = point.z;
+        }
+
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute(
+          "position",
+          new THREE.BufferAttribute(positions, 3)
+        );
+
+        const material = new THREE.PointsMaterial({
+          color: 0xffffff,
+          size: 0.1,
+        });
+        const pointCloud = new THREE.Points(geometry, material);
+        scene.add(pointCloud);
+
+        return pointCloud;
+      }
+
+      loadPointCloudFromJSON(
+        '{{ url_for("static", filename="pointcloud.json") }}'
+      ).then((pointCloud) => {
+        camera.position.z = 5;
+
+        function animate() {
+          requestAnimationFrame(animate);
+          renderer.render(scene, camera);
+        }
+
+        animate();
+
+        let mouseX = 0;
+        let mouseY = 0;
+
+        window.addEventListener("mousemove", (event) => {
+          mouseX = (event.clientX / window.innerWidth) * 2 - 1;
+          mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
+
+          pointCloud.rotation.x = mouseY * Math.PI;
+          pointCloud.rotation.y = mouseX * Math.PI;
+	//pointCloud.rotation.x = -0.094;//mouseY * Math.PI;
+    	//pointCloud.rotation.y = 2.93;//mouseX * Math.PI;
+        });
+      });
+    </script>
+  </body>
+</html>

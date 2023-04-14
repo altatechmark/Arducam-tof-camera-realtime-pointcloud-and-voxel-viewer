@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Real-time PCD Viewer</title>
+    <style>
+      body {
+        margin: 0;
+      }
+    </style>
+  </head>
+  <body style ="overflow-x: hidden; overflow-y: hidden;">
+    <script type="module">
+      import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.118/build/three.module.js";
+      import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@0.118/examples/jsm/controls/OrbitControls.js";
+
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(75, w / h, 0.1, 1000);
+      camera.position.z = 15;
+      const renderer = new THREE.WebGLRenderer();
+      renderer.setSize(w, h);
+      document.body.appendChild(renderer.domElement);
+
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.update();
+
+      const jsonFilePath = "{{url_for('static', filename='pointcloud.json')}}";
+
+      async function loadJSON(url) {
+        const response = await fetch(url);
+        const jsonData = await response.json();
+        return jsonData;
+      }
+
+      function updatePointCloud() {
+        loadJSON(jsonFilePath).then((data) => {
+          // Clear the previous point cloud
+          scene.children = scene.children.filter(
+            (child) => !(child instanceof THREE.Mesh)
+          );
+
+          const geometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+          const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+          data.points.forEach((point) => {
+            const voxel = new THREE.Mesh(geometry, material);
+            voxel.position.set(point.x, point.y, point.z);
+            scene.add(voxel);
+          });
+        });
+
+        // Schedule the next update
+        setTimeout(updatePointCloud, 10000); // Update every 1000 milliseconds (1 second)
+      }
+
+      // Start updating the point cloud
+      updatePointCloud();
+
+      function animate() {
+        requestAnimationFrame(animate);
+        renderer.render(scene, camera);
+      }
+      animate();
+
+      function handleWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      }
+      window.addEventListener("resize", handleWindowResize, false);
+    </script>
+  </body>
+</html>
